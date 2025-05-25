@@ -38,8 +38,15 @@ class TimezoneConverter:
             src_tz = pytz.timezone(source_tz)
             target_tz = pytz.timezone(target_tz)
             
-            # Convert
-            src_dt = src_tz.localize(dt)
+            # Handle timezone-aware vs naive datetime
+            if dt.tzinfo is None:
+                # Naive datetime - localize to source timezone
+                src_dt = src_tz.localize(dt)
+            else:
+                # Already timezone-aware - convert to source timezone first
+                src_dt = dt.astimezone(src_tz)
+            
+            # Convert to target timezone
             target_dt = src_dt.astimezone(target_tz)
             
             # Calculate time difference
@@ -94,16 +101,9 @@ def index() -> str:
     timezones = sorted(pytz.all_timezones)
     return render_template('index.html', timezones=timezones)
 
-@app.route('/convert', methods=['GET', 'POST'])
+@app.route('/convert', methods=['POST'])
 def convert() -> Tuple[Dict[str, Any], int]:
     """Handle timezone conversion requests"""
-    
-    # Validate request method
-    if request.method != 'POST':
-        return APIResponse.error(
-            'Method not allowed',
-            status_code=405
-        )
     
     try:
         # Get request data
@@ -141,4 +141,4 @@ def convert() -> Tuple[Dict[str, Any], int]:
         )
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(debug=True)

@@ -45,14 +45,18 @@ class TimezoneConverter {
         this.setupCustomSelect(this.sourceTimezone);
         this.setupCustomSelect(this.targetTimezone);
 
-        // Try to set user's timezone
+        // Try to set user's timezone with improved error handling
         try {
             const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-            if (userTimezone) {
+            if (userTimezone && this.isValidTimezone(userTimezone)) {
                 this.setTimezoneValue(this.sourceTimezone, userTimezone);
+            } else {
+                // Fallback to UTC if detection fails
+                this.setTimezoneValue(this.sourceTimezone, 'UTC');
             }
         } catch (e) {
-            console.warn('Could not detect user timezone:', e);
+            console.warn('Could not detect user timezone, falling back to UTC:', e);
+            this.setTimezoneValue(this.sourceTimezone, 'UTC');
         }
     }
 
@@ -148,6 +152,16 @@ class TimezoneConverter {
     hideElements(elements) {
         elements.forEach(el => el.classList.add('hidden'));
     }
+
+    // Helper method to validate timezone
+    isValidTimezone(timezone) {
+        try {
+            Intl.DateTimeFormat(undefined, { timeZone: timezone });
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
 }
 
 // Custom Select Component
@@ -228,4 +242,4 @@ class CustomSelect {
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     new TimezoneConverter();
-}); 
+});
