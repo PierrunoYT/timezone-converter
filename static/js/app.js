@@ -141,6 +141,16 @@ class TimezoneConverter {
             `${result.timezone} (${result.offset})`;
         this.resultDiv.querySelector('.time-difference').textContent = 
             `Difference: ${result.difference}`;
+        
+        // Display note if present (e.g., DST adjustment notification)
+        const noteElement = this.resultDiv.querySelector('.result-note');
+        if (result.note) {
+            noteElement.textContent = result.note;
+            noteElement.classList.remove('hidden');
+        } else {
+            noteElement.classList.add('hidden');
+        }
+        
         this.resultDiv.classList.remove('hidden');
     }
 
@@ -242,4 +252,4 @@ class CustomSelect {
 // Initialize the application
 document.addEventListener('DOMContentLoaded', () => {
     new TimezoneConverter();
-});
+});

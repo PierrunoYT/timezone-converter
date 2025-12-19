@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify
 from datetime import datetime
 import pytz
 from typing import Dict, Any, Optional, Tuple
+import os
 
 class TimezoneConverter:
     """Handles timezone conversion logic"""
@@ -11,7 +12,7 @@ class TimezoneConverter:
         datetime_str: str,
         source_tz: str,
         target_tz: str
-    ) -> Tuple[datetime, str, str, str]:
+    ) -> Tuple[datetime, str, str, str, Optional[str]]:
         """
         Convert datetime between timezones
         
@@ -21,7 +22,7 @@ class TimezoneConverter:
             target_tz: Target timezone name
             
         Returns:
-            Tuple of (converted datetime, timezone name, timezone offset, time difference)
+            Tuple of (converted datetime, timezone name, timezone offset, time difference, adjustment note or None)
             
         Raises:
             ValueError: If inputs are invalid
@@ -30,6 +31,8 @@ class TimezoneConverter:
         if not all([datetime_str, source_tz, target_tz]):
             raise ValueError("All fields are required")
 
+        adjustment_note = None
+        
         try:
             # Parse datetime
             dt = datetime.fromisoformat(datetime_str)
@@ -41,7 +44,18 @@ class TimezoneConverter:
             # Handle timezone-aware vs naive datetime
             if dt.tzinfo is None:
                 # Naive datetime - localize to source timezone
-                src_dt = src_tz.localize(dt)
+                try:
+                    src_dt = src_tz.localize(dt)
+                except pytz.exceptions.AmbiguousTimeError:
+                    # During DST transition (ambiguous time): default to standard time (is_dst=False)
+                    src_dt = src_tz.localize(dt, is_dst=False)
+                except pytz.exceptions.NonExistentTimeError:
+                    # During DST transition (spring forward): time does not exist
+                    # Adjust by adding 1 hour and normalize to the next valid time
+                    from datetime import timedelta
+                    adjusted_dt = dt + timedelta(hours=1)
+                    src_dt = src_tz.localize(adjusted_dt, is_dst=None)
+                    adjustment_note = f"The specified time does not exist in {source_tz} due to DST transition. Adjusted by +1 hour to the next valid time."
             else:
                 # Already timezone-aware - convert to source timezone first
                 src_dt = dt.astimezone(src_tz)
@@ -63,7 +77,8 @@ class TimezoneConverter:
                 target_dt,
                 str(target_dt.tzinfo),
                 target_dt.strftime('%z'),
-                diff_str
+                diff_str,
+                adjustment_note
             )
             
         except pytz.exceptions.UnknownTimeZoneError:
@@ -117,19 +132,25 @@ def convert() -> Tuple[Dict[str, Any], int]:
         target_tz = data.get('target_timezone')
         
         # Convert timezone
-        target_dt, tz_name, tz_offset, diff_str = TimezoneConverter.convert(
+        target_dt, tz_name, tz_offset, diff_str, adjustment_note = TimezoneConverter.convert(
             datetime_str,
             source_tz,
             target_tz
         )
         
         # Format response
-        return APIResponse.success({
+        response_data = {
             'datetime': target_dt.strftime('%Y-%m-%d %H:%M:%S'),
             'timezone': tz_name,
             'offset': tz_offset,
             'difference': diff_str
-        })
+        }
+        
+        # Add adjustment note if the input time was nonexistent (DST gap)
+        if adjustment_note:
+            response_data['note'] = adjustment_note
+        
+        return APIResponse.success(response_data)
         
     except ValueError as e:
         return APIResponse.error(str(e))
@@ -141,4 +162,8 @@ def convert() -> Tuple[Dict[str, Any], int]:
         )
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Enable debug mode only if FLASK_DEBUG or FLASK_ENV is set to 'development'
+    # For production, use a WSGI server (gunicorn, uwsgi) without debug mode enabled
+    debug_mode = os.getenv('FLASK_DEBUG', '').lower() == 'true' or \
+                 os.getenv('FLASK_ENV', '').lower() == 'development'
+    app.run(debug=debug_mode)
