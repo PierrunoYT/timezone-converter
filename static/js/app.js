@@ -128,6 +128,9 @@ class TimezoneConverter {
         select.value = value;
         const customSelect = select.closest('.custom-select');
         customSelect.querySelector('.selected-value').textContent = value;
+        customSelect.querySelectorAll('.option').forEach(opt => {
+            opt.classList.toggle('selected', opt.dataset.value === value);
+        });
     }
 
     setTheme(theme) {

@@ -39,7 +39,7 @@ class TimezoneConverter:
             
             # Get timezone objects
             src_tz = pytz.timezone(source_tz)
-            target_tz = pytz.timezone(target_tz)
+            tgt_tz = pytz.timezone(target_tz)
             
             # Handle timezone-aware vs naive datetime
             if dt.tzinfo is None:
@@ -54,14 +54,14 @@ class TimezoneConverter:
                     # Adjust by adding 1 hour and normalize to the next valid time
                     from datetime import timedelta
                     adjusted_dt = dt + timedelta(hours=1)
-                    src_dt = src_tz.localize(adjusted_dt, is_dst=None)
+                    src_dt = src_tz.localize(adjusted_dt, is_dst=True)
                     adjustment_note = f"The specified time does not exist in {source_tz} due to DST transition. Adjusted by +1 hour to the next valid time."
             else:
                 # Already timezone-aware - convert to source timezone first
                 src_dt = dt.astimezone(src_tz)
             
             # Convert to target timezone
-            target_dt = src_dt.astimezone(target_tz)
+            target_dt = src_dt.astimezone(tgt_tz)
             
             # Calculate time difference
             src_offset = src_dt.utcoffset().total_seconds() / 3600
@@ -69,9 +69,12 @@ class TimezoneConverter:
             diff_hours = target_offset - src_offset
             
             # Format the difference string
-            diff_str = f"{'+' if diff_hours > 0 else ''}{int(diff_hours):d}h"
-            if diff_hours % 1:
-                diff_str += f" {int(abs(diff_hours % 1 * 60))}m"
+            sign = '+' if diff_hours > 0 else ''
+            whole_hours = int(diff_hours)
+            remaining_minutes = int(abs(diff_hours % 1) * 60)
+            diff_str = f"{sign}{whole_hours}h"
+            if remaining_minutes:
+                diff_str += f" {remaining_minutes}m"
             
             return (
                 target_dt,

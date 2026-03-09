@@ -527,28 +527,7 @@ select,
     margin-bottom: 2rem; /* Add more space after the datetime input */
 }
 
-/* Add a small gap between help text and the input */
-.help-text {
-    margin-top: 0.5rem;
-    color: var(--text-light);
-    font-size: 0.875rem;
-}
 
-.time-difference {
-    margin-top: 0.5rem;
-    padding: 0.25rem 0.75rem;
-    background: var(--primary-50);
-    color: var(--primary-700);
-    border-radius: var(--radius-full);
-    display: inline-block;
-    font-weight: 500;
-    font-size: 0.875rem;
-}
-
-[data-theme="dark"] .time-difference {
-    background: var(--primary-900);
-    color: var(--primary-200);
-} 
 
 /* Add a small gap between help text and the input */
 .help-text {
